@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0a0f;
+  color: #f3f1ec;
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  ::selection {
+    background: rgba(201, 161, 92, 0.35);
+    color: #f3f1ec;
+  }
+  :focus-visible {
+    outline: 2px solid #c9a15c;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-6 md:px-10;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-gold;
+  }
+
+  .eyebrow::before {
+    content: "";
+    @apply h-1.5 w-1.5 rounded-full bg-gold animate-spark;
+  }
+
+  .glass-card {
+    @apply rounded-xl2 border border-line bg-white/[0.03] backdrop-blur-sm;
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:border-gold/40 hover:bg-white/[0.05];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 font-body text-sm font-medium text-ink transition-all duration-300 hover:bg-gold-soft hover:shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line px-6 py-3 font-body text-sm font-medium text-paper transition-all duration-300 hover:border-gold/50 hover:text-gold;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold/35 bg-gold/[0.06] px-6 py-3 font-body text-sm font-medium text-gold transition-all duration-300 hover:bg-gold/15;
+  }
+
+  .section-heading {
+    @apply font-display text-3xl font-medium leading-tight text-paper md:text-4xl;
+  }
+
+  .node-line {
+    background: linear-gradient(
+      to bottom,
+      rgba(201, 161, 92, 0.6),
+      rgba(201, 161, 92, 0)
+    );
+  }
+}
+
+/* Signature "Idea -> AI -> Creative Result" hero animation */
+.otr-line {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: otrDraw 10s ease infinite;
+}
+@keyframes otrDraw {
+  0% { stroke-dashoffset: 140; }
+  12% { stroke-dashoffset: 0; }
+  90% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 140; opacity: 0.3; }
+}
+.otr-hub {
+  background: #111219;
+  border: 1px solid rgba(201, 161, 92, 0.5);
+  box-shadow: 0 0 30px rgba(201, 161, 92, 0.2);
+  animation: hubPulse 3s ease-in-out infinite;
+}
+@keyframes hubPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(201, 161, 92, 0.15); }
+  50% { box-shadow: 0 0 34px rgba(201, 161, 92, 0.32); }
+}
+.otr-result {
+  opacity: 0;
+  animation: otrResult 10s ease infinite;
+}
+@keyframes otrResult {
+  0%, 52% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  58% { opacity: 1; transform: translateX(-50%) scale(1); }
+  82% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+.otr-node {
+  opacity: 0.3;
+  animation: nodeAppear 10s ease infinite;
+}
+@keyframes nodeAppear {
+  0% { opacity: 0.25; transform: translate(-50%, -50%) scale(0.85); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); border-color: rgba(201, 161, 92, 0.6); color: #c9a15c; }
+  24% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(201, 161, 92, 0.35); color: #c9a15c; }
+  88% { opacity: 0.7; }
+  100% { opacity: 0.25; transform: translate(-50%, -50%) scale(0.85); }
+}
+.otr-node-active,
+.otr-node:hover,
+.otr-node:focus-visible {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1.18) !important;
+  border-color: #c9a15c !important;
+  color: #c9a15c !important;
+  background: rgba(201, 161, 92, 0.15) !important;
+  outline: none;
+  animation: none !important;
+}
+.otr-frozen .otr-line,
+.otr-frozen .otr-node:not(.otr-node-active),
+.otr-frozen .otr-spark,
+.otr-frozen .otr-cap {
+  animation-play-state: paused !important;
+}
+.otr-cap {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: otrCaption 10s ease infinite;
+}
+.otr-cap-2 { animation-delay: 2.5s; }
+.otr-cap-3 { animation-delay: 5s; }
+.otr-cap-4 { animation-delay: 7.5s; }
+@keyframes otrCaption {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  20% { opacity: 1; }
+  24%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
