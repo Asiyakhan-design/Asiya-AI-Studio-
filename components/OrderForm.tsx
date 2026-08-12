@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, ChangeEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { services } from "@/lib/data";
 import { trackEvent } from "@/lib/analytics";
@@ -52,6 +52,40 @@ export default function OrderForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [serverError, setServerError] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string>("");
+
+  const ACCEPTED_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+  const MAX_FILE_MB = 8;
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setFileError("");
+    if (!f) {
+      setFile(null);
+      return;
+    }
+    if (!ACCEPTED_TYPES.includes(f.type)) {
+      setFileError("Unsupported file type. Allowed: PDF, JPG, PNG, WEBP, DOC, DOCX.");
+      setFile(null);
+      e.target.value = "";
+      return;
+    }
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      setFileError(`File is too large — max ${MAX_FILE_MB}MB.`);
+      setFile(null);
+      e.target.value = "";
+      return;
+    }
+    setFile(f);
+  }
 
   const selectedService = services.find((s) => s.slug === values.service);
 
@@ -83,24 +117,29 @@ export default function OrderForm() {
 
     setStatus("submitting");
     setServerError("");
+    setFileError("");
 
     try {
+      const form = new FormData();
+      form.set("service", values.service);
+      form.set(
+        "pkg",
+        selectedService?.packages.find((p) => p.name.toLowerCase() === values.pkg)?.name ?? values.pkg
+      );
+      form.set("name", values.name);
+      form.set("email", values.email);
+      form.set("whatsapp", values.whatsapp);
+      form.set("description", values.description);
+      form.set("requirements", values.requirements);
+      form.set("deadline", values.deadline);
+      form.set("style", values.style);
+      form.set("notes", values.notes);
+      form.set("website", values.website);
+      if (file) form.set("referenceFile", file);
+
       const res = await fetch("/api/project-request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service: values.service,
-          pkg: selectedService?.packages.find((p) => p.name.toLowerCase() === values.pkg)?.name ?? values.pkg,
-          name: values.name,
-          email: values.email,
-          whatsapp: values.whatsapp,
-          description: values.description,
-          requirements: values.requirements,
-          deadline: values.deadline,
-          style: values.style,
-          notes: values.notes,
-          website: values.website,
-        }),
+        body: form,
       });
 
       const data = await res.json();
@@ -113,7 +152,7 @@ export default function OrderForm() {
         return;
       }
 
-      // No personal data (name/email/whatsapp/description) is sent to analytics —
+      // No personal data (name/email/whatsapp/description/file) is sent to analytics —
       // only the service, package, and a non-identifying request ID.
       trackEvent("project_request_submit", {
         service: values.service,
@@ -317,13 +356,29 @@ export default function OrderForm() {
         </div>
 
         <div>
-          <label className="font-mono text-xs uppercase tracking-wide text-muted">
-            Reference Files
+          <label htmlFor="reference-file" className="font-mono text-xs uppercase tracking-wide text-muted">
+            Reference File <span className="normal-case text-muted/70">(optional)</span>
           </label>
-          <div className="mt-2 rounded-xl border border-dashed border-line px-4 py-6 text-center font-body text-xs text-muted">
-            File upload is enabled once this site is connected to a backend.
-            For now, please mention reference links in your description, or
-            send files by email/WhatsApp after submitting.
+          <div
+            className={`mt-2 rounded-xl border border-dashed px-4 py-5 text-center font-body text-xs ${
+              fileError ? "border-red-400/60" : "border-line"
+            }`}
+          >
+            <input
+              id="reference-file"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+              onChange={handleFileChange}
+              className="block w-full text-xs text-muted file:mr-3 file:rounded-full file:border-0 file:bg-gold/15 file:px-4 file:py-2 file:font-body file:text-xs file:font-medium file:text-gold hover:file:bg-gold/25"
+            />
+            <p className="mt-2 text-muted">
+              PDF, JPG, PNG, WEBP, DOC or DOCX — max 8MB. Attached directly to our
+              notification email; not stored or made public.
+            </p>
+            {file && !fileError && (
+              <p className="mt-1 text-gold">Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)}MB)</p>
+            )}
+            {fileError && <p className="mt-1 text-red-400">{fileError}</p>}
           </div>
         </div>
 

@@ -1,35 +1,9 @@
 import { BUSINESS_EMAIL, WHATSAPP_NUMBER } from "@/lib/data";
 
 /**
- * Server-only helpers for the project-request notification pipeline.
- * Import this ONLY from app/api/** route handlers — never from a "use client" component.
+ * Server-only helpers. Import ONLY from app/api/** route handlers — never from a
+ * "use client" component.
  */
-
-export type ProjectRequestPayload = {
-  requestId: string;
-  submittedAt: string;
-  name: string;
-  brandName?: string;
-  email: string;
-  whatsapp?: string;
-  country?: string;
-  city?: string;
-  service: string;
-  serviceName: string;
-  pkg: string;
-  projectTitle?: string;
-  description: string;
-  brandDescription?: string;
-  audience?: string;
-  mainGoal?: string;
-  style?: string;
-  tone?: string;
-  deadline?: string;
-  preferredDeliveryDate?: string;
-  requirements?: string;
-  notes?: string;
-  importantLinks?: string;
-};
 
 /* ------------------------------- sanitization ------------------------------- */
 
@@ -45,12 +19,9 @@ export function sanitizeText(input: unknown, maxLen = 2000): string {
 /* ------------------------------- request ID ------------------------------- */
 
 /**
- * Generates a request ID in the AAS-YYYY-NNNN format.
- *
- * HONESTY NOTE: without a database, this cannot guarantee global uniqueness — it's a
- * random 4-digit suffix, not a sequence. Collisions are unlikely but possible. Once a
- * real database is connected (see DATABASE_URL in .env.example), replace this with a
- * DB-enforced unique sequence/UUID and treat any collision as a hard error.
+ * HONESTY NOTE: without a database this cannot guarantee global uniqueness — it's a
+ * random 4-digit suffix, not a sequence. Once a real database is connected, replace
+ * this with a DB-enforced unique sequence/UUID.
  */
 export function generateRequestId(): string {
   const year = new Date().getFullYear();
@@ -61,13 +32,11 @@ export function generateRequestId(): string {
 /* ------------------------------- rate limiting ------------------------------- */
 
 /**
- * Best-effort in-memory rate limiter.
+ * Best-effort in-memory rate limiter, keyed by caller-supplied string (e.g. `ip:contact`).
  *
- * HONESTY NOTE: this only limits requests within a single warm serverless instance.
- * On Vercel, concurrent/cold-started instances each get their own memory, so this is
- * NOT a reliable global rate limit — it only blocks obvious rapid-fire abuse from the
- * same instance. For real protection, put this behind Vercel's built-in abuse
- * protections or a dedicated service (e.g. Upstash Ratelimit, Cloudflare).
+ * HONESTY NOTE: this only limits requests within a single warm serverless instance —
+ * on Vercel it is NOT a reliable global rate limit. For real protection at scale, use
+ * a shared store (e.g. Upstash Ratelimit) or your host's built-in abuse protection.
  */
 const submissionLog = new Map<string, number[]>();
 const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
@@ -81,45 +50,63 @@ export function isRateLimited(key: string): boolean {
   return timestamps.length > MAX_PER_WINDOW;
 }
 
-/* ------------------------------- email notification ------------------------------- */
+/* ------------------------------- file validation ------------------------------- */
 
-export async function sendBusinessEmail(
-  payload: ProjectRequestPayload
-): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
+export const ALLOWED_FILE_TYPES: Record<string, string[]> = {
+  "application/pdf": [".pdf"],
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+};
+export const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB
+
+export type FileValidationResult =
+  | { ok: true; safeName: string }
+  | { ok: false; error: string };
+
+/**
+ * Validates a File's declared MIME type + extension + size. This is defense-in-depth,
+ * not a guarantee — the browser can lie about MIME type, so anything accepted here is
+ * still only ever used as an email attachment, never executed, never written to a
+ * public path, and never persisted to disk.
+ */
+export function validateFile(file: File): FileValidationResult {
+  if (file.size > MAX_FILE_BYTES) {
+    return { ok: false, error: `File is too large (max ${MAX_FILE_BYTES / (1024 * 1024)}MB).` };
+  }
+  const allowedExts = ALLOWED_FILE_TYPES[file.type];
+  if (!allowedExts) {
+    return { ok: false, error: "Unsupported file type. Allowed: PDF, JPG, PNG, WEBP, DOC, DOCX." };
+  }
+  const originalName = file.name || "reference";
+  const ext = "." + (originalName.split(".").pop() || "").toLowerCase();
+  if (!allowedExts.includes(ext)) {
+    return { ok: false, error: "File extension doesn't match its type." };
+  }
+  // Randomized, sanitized filename — never trust the client-supplied name for storage
+  // or for the attachment filename shown downstream. No path separators possible.
+  const safeName = `reference-${Date.now()}-${Math.floor(Math.random() * 1e6)}${ext}`;
+  return { ok: true, safeName };
+}
+
+/* ------------------------------- generic email sender ------------------------------- */
+
+export type EmailAttachment = { filename: string; content: string /* base64 */ };
+
+export async function sendOwnerEmail(opts: {
+  subject: string;
+  text: string;
+  replyTo?: string;
+  attachments?: EmailAttachment[];
+}): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.BUSINESS_EMAIL || BUSINESS_EMAIL;
 
   if (!apiKey) {
     return { sent: false, skipped: true, error: "RESEND_API_KEY not configured" };
   }
-
-  const lines = [
-    `Request ID: ${payload.requestId}`,
-    `Submitted: ${payload.submittedAt}`,
-    ``,
-    `Client: ${payload.name}`,
-    payload.brandName ? `Business/Brand: ${payload.brandName}` : null,
-    `Email: ${payload.email}`,
-    payload.whatsapp ? `WhatsApp: ${payload.whatsapp}` : null,
-    payload.country ? `Country: ${payload.country}` : null,
-    payload.city ? `City/Region: ${payload.city}` : null,
-    ``,
-    `Service: ${payload.serviceName}`,
-    `Package: ${payload.pkg}`,
-    payload.projectTitle ? `Project Title: ${payload.projectTitle}` : null,
-    `Deadline: ${payload.deadline || "Not specified"}`,
-    payload.preferredDeliveryDate ? `Preferred Delivery Date: ${payload.preferredDeliveryDate}` : null,
-    ``,
-    `Description: ${payload.description}`,
-    payload.brandDescription ? `Business Description: ${payload.brandDescription}` : null,
-    payload.audience ? `Target Audience: ${payload.audience}` : null,
-    payload.mainGoal ? `Main Goal: ${payload.mainGoal}` : null,
-    payload.style ? `Preferred Style: ${payload.style}` : null,
-    payload.tone ? `Preferred Tone: ${payload.tone}` : null,
-    payload.importantLinks ? `Important Links: ${payload.importantLinks}` : null,
-    payload.requirements ? `Requirements: ${payload.requirements}` : null,
-    payload.notes ? `Additional Notes: ${payload.notes}` : null,
-  ].filter(Boolean);
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -131,9 +118,10 @@ export async function sendBusinessEmail(
       body: JSON.stringify({
         from: process.env.RESEND_FROM_EMAIL || "Asiya AI Studio <onboarding@resend.dev>",
         to: [to],
-        reply_to: payload.email,
-        subject: `New Project Request - ${payload.requestId}`,
-        text: lines.join("\n"),
+        reply_to: opts.replyTo,
+        subject: opts.subject,
+        text: opts.text,
+        attachments: opts.attachments,
       }),
     });
 
@@ -147,10 +135,16 @@ export async function sendBusinessEmail(
   }
 }
 
-/* ------------------------------- WhatsApp notification ------------------------------- */
+/* ------------------------------- WhatsApp template notification ------------------------------- */
 
-export async function sendWhatsAppNotification(
-  payload: ProjectRequestPayload
+/**
+ * Sends a business-notification WhatsApp message via Meta's Cloud API using an
+ * APPROVED message template (Meta does not allow free-text business-initiated
+ * messages outside a customer's 24h session window). `params` are filled into the
+ * template's body variables in order — adjust to match your approved template.
+ */
+export async function sendWhatsAppTemplateNotification(
+  params: string[]
 ): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -163,46 +157,33 @@ export async function sendWhatsAppNotification(
       sent: false,
       skipped: true,
       error:
-        "WhatsApp Cloud API not configured (requires WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, and an approved WHATSAPP_TEMPLATE_NAME in Meta Business Manager)",
+        "WhatsApp Cloud API not configured (requires WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, and an approved WHATSAPP_TEMPLATE_NAME)",
     };
   }
 
-  // Business-initiated notifications outside a 24h customer session require an
-  // approved Meta message template — a free-text message is not permitted here.
-  // The template must already be approved in Meta Business Manager; this only
-  // fills in its variables. Adjust the parameter list to match your template.
   try {
-    const res = await fetch(
-      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+    const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: notifyNumber,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: params.map((text) => ({ type: "text", text })),
+            },
+          ],
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: notifyNumber,
-          type: "template",
-          template: {
-            name: templateName,
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  { type: "text", text: payload.requestId },
-                  { type: "text", text: payload.name },
-                  { type: "text", text: payload.serviceName },
-                  { type: "text", text: payload.pkg },
-                  { type: "text", text: payload.deadline || "Not specified" },
-                ],
-              },
-            ],
-          },
-        }),
-      }
-    );
+      }),
+    });
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
