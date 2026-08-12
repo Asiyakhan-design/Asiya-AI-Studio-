@@ -18,9 +18,14 @@ export const brand = {
   email: BUSINESS_EMAIL,
   whatsapp: "+92 334 2813055",
   // Real social URLs go here once accounts exist. Never fill with placeholder/fake links.
-  instagram: null as string | null,
-  linkedin: null as string | null,
-  facebook: null as string | null,
+  // Real social URLs, as supplied by the business owner.
+  instagram: "https://instagram.com/asiyaaistudio?igsh=MWZodmQ5YnJxdmtjbw==" as string | null,
+  linkedin: null as string | null, // not supplied yet — intentionally left off rather than guessed
+  facebook: "https://facebook.com/share/1PpTcA53RR" as string | null,
+  youtube: "https://www.youtube.com/@AsiyaAIStudio" as string | null,
+  whatsappChannel: "https://whatsapp.com/channel/0029Vb86Q0q1dAw62yMNpB25" as string | null,
+  whatsappGroup: "https://chat.whatsapp.com/JpgCwHy2znh9B93DwRB0RT?s=cl&p=a&ilr=4" as string | null,
+  websiteUrl: "https://asiya-ai-studio.vercel.app",
 };
 
 export const services: Service[] = [

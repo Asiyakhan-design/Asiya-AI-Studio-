@@ -25,7 +25,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://asiyaaistudio.com"),
+  metadataBase: new URL("https://asiya-ai-studio.vercel.app"),
   title: {
     default: "Asiya AI Studio | AI-Powered Digital Services",
     template: "%s | Asiya AI Studio",

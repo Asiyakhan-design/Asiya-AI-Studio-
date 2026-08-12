@@ -6,8 +6,9 @@ import { brand, services, legalPages, waLink, mailLink } from "@/lib/data";
 export default function Footer() {
   const socials = [
     { label: "Instagram", href: brand.instagram },
-    { label: "LinkedIn", href: brand.linkedin },
     { label: "Facebook", href: brand.facebook },
+    { label: "YouTube", href: brand.youtube },
+    { label: "LinkedIn", href: brand.linkedin },
   ].filter((s): s is { label: string; href: string } => Boolean(s.href));
 
   return (
@@ -34,6 +35,30 @@ export default function Footer() {
             >
               <Icon name="mail" className="h-3.5 w-3.5" /> {brand.email}
             </a>
+            {(brand.whatsappChannel || brand.whatsappGroup) && (
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                {brand.whatsappChannel && (
+                  <a
+                    href={brand.whatsappChannel}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-[11px] uppercase tracking-wide text-muted hover:text-gold"
+                  >
+                    WhatsApp Channel
+                  </a>
+                )}
+                {brand.whatsappGroup && (
+                  <a
+                    href={brand.whatsappGroup}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-[11px] uppercase tracking-wide text-muted hover:text-gold"
+                  >
+                    WhatsApp Group
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           {socials.length > 0 ? (
             <div className="mt-5 flex gap-4">

@@ -67,6 +67,37 @@ export default function ContactPage() {
               internationally.
             </p>
           </div>
+
+          <div className="glass-card p-6">
+            <p className="eyebrow">Follow &amp; Join</p>
+            <div className="mt-3 flex flex-col gap-2">
+              {brand.instagram && (
+                <a href={brand.instagram} target="_blank" rel="noreferrer" className="font-body text-sm text-muted hover:text-gold">
+                  Instagram
+                </a>
+              )}
+              {brand.facebook && (
+                <a href={brand.facebook} target="_blank" rel="noreferrer" className="font-body text-sm text-muted hover:text-gold">
+                  Facebook
+                </a>
+              )}
+              {brand.youtube && (
+                <a href={brand.youtube} target="_blank" rel="noreferrer" className="font-body text-sm text-muted hover:text-gold">
+                  YouTube
+                </a>
+              )}
+              {brand.whatsappChannel && (
+                <a href={brand.whatsappChannel} target="_blank" rel="noreferrer" className="font-body text-sm text-muted hover:text-gold">
+                  WhatsApp Channel
+                </a>
+              )}
+              {brand.whatsappGroup && (
+                <a href={brand.whatsappGroup} target="_blank" rel="noreferrer" className="font-body text-sm text-muted hover:text-gold">
+                  WhatsApp Group
+                </a>
+              )}
+            </div>
+          </div>
         </RevealOnScroll>
 
         <RevealOnScroll delay={0.08}>

@@ -1,8 +1,7 @@
 import { MetadataRoute } from "next";
 import { services, legalPages } from "@/lib/data";
 
-// NOTE: update this to the real production domain before deploying.
-const BASE_URL = "https://asiyaaistudio.com";
+const BASE_URL = "https://asiya-ai-studio.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
